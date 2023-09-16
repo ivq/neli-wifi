@@ -16,6 +16,9 @@ async = ["neli/async"]
 neli = "0.6.0"
 neli-proc-macros = "0.1.0"
 
+[dev-dependencies]
+neli-wifi = { path = ".", features = ["async"] }
+
 [dev-dependencies.tokio]
 version = "1.0"
 features = ["macros", "rt-multi-thread"]
