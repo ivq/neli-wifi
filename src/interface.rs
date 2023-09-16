@@ -6,6 +6,7 @@ use neli::err::DeError;
 /// A struct representing a wifi interface
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Interface {
+    pub iftype: Option<u32>,
     /// A netlink interface index. This index is used to fetch extra information with nl80211
     pub index: Option<i32>,
     /// Interface essid
@@ -16,8 +17,11 @@ pub struct Interface {
     pub name: Option<Vec<u8>>,
     /// Interface frequency of the selected channel (MHz)
     pub frequency: Option<u32>,
-    /// Interface chanel
+    pub channel_type: Option<u32>,
+    /// Interface channel width
     pub channel: Option<u32>,
+    pub center_freq1: Option<u32>,
+    pub center_freq2: Option<u32>,
     /// Interface transmit power level in signed mBm units.
     pub power: Option<u32>,
     /// index of wiphy to operate on, cf. /sys/class/ieee80211/<phyname>/index
@@ -45,11 +49,23 @@ impl TryFrom<Attrs<'_, Nl80211Attr>> for Interface {
                 Nl80211Attr::AttrIfname => {
                     res.name = Some(attr.get_payload_as_with_len()?);
                 }
+                Nl80211Attr::AttrIftype => {
+                    res.iftype = Some(attr.get_payload_as()?);
+                }
                 Nl80211Attr::AttrWiphyFreq => {
                     res.frequency = Some(attr.get_payload_as()?);
                 }
+                Nl80211Attr::AttrWiphyChannelType => {
+                    res.channel_type = Some(attr.get_payload_as()?);
+                }
                 Nl80211Attr::AttrChannelWidth => {
                     res.channel = Some(attr.get_payload_as()?);
+                }
+                Nl80211Attr::AttrCenterFreq1 => {
+                    res.center_freq1 = Some(attr.get_payload_as()?);
+                }
+                Nl80211Attr::AttrCenterFreq2 => {
+                    res.center_freq2 = Some(attr.get_payload_as()?);
                 }
                 Nl80211Attr::AttrWiphyTxPowerLevel => {
                     res.power = Some(attr.get_payload_as()?);
@@ -102,12 +118,16 @@ mod test_interface {
             .try_into()
             .unwrap();
         let expected_interface = Interface {
+            iftype: Some(2),
             index: Some(3),
             ssid: Some(vec![101, 100, 117, 114, 111, 97, 109]),
             mac: Some(vec![255, 255, 255, 255, 255, 255]),
             name: Some(vec![119, 108, 112, 53, 115, 48]),
             frequency: Some(u32::from_le_bytes([108, 9, 0, 0])),
+            channel_type: None,
             channel: Some(u32::from_le_bytes([1, 0, 0, 0])),
+            center_freq1: None,
+            center_freq2: None,
             power: Some(u32::from_le_bytes([164, 6, 0, 0])),
             phy: Some(u32::from_le_bytes([0, 0, 0, 0])),
             device: Some(u64::from_le_bytes([1, 0, 0, 0, 0, 0, 0, 0])),
