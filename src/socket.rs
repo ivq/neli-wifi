@@ -11,7 +11,7 @@ use neli::err::{DeError, NlError};
 use neli::genl::{Genlmsghdr, Nlattr};
 use neli::nl::{NlPayload, Nlmsghdr};
 use neli::socket::NlSocketHandle;
-use neli::types::GenlBuffer;
+use neli::types::{Buffer, GenlBuffer};
 
 /// A generic netlink socket to send commands and receive messages
 pub struct Socket {
@@ -75,6 +75,28 @@ impl Socket {
         }
 
         Ok(retval.unwrap_or_default())
+    }
+
+    pub fn cmd_no_response(
+        &mut self,
+        cmd: Nl80211Cmd,
+        attrs: GenlBuffer<Nl80211Attr, Buffer>,
+    ) -> Result<(), NlError> {
+        let msghdr = Genlmsghdr::<Nl80211Cmd, Nl80211Attr>::new(cmd, NL_80211_GENL_VERSION, attrs);
+
+        let nlhdr = {
+            let len = None;
+            let nl_type = self.family_id;
+            let flags = NlmFFlags::new(&[NlmF::Request]);
+            let seq = None;
+            let pid = None;
+            let payload = NlPayload::Payload(msghdr);
+            Nlmsghdr::new(len, nl_type, flags, seq, pid, payload)
+        };
+
+        self.sock.send(nlhdr)?;
+
+        Ok(())
     }
 
     fn get_info_vec<T>(
@@ -177,6 +199,10 @@ impl Socket {
     ///```
     pub fn get_station_info(&mut self, interface_index: i32) -> Result<Station, NlError> {
         self.get_info(interface_index, Nl80211Cmd::CmdGetStation)
+    }
+
+    pub fn get_interface_info(&mut self, interface_index: i32) -> Result<Interface, NlError> {
+        self.get_info(interface_index, Nl80211Cmd::CmdGetInterface)
     }
 
     pub fn get_bss_info(&mut self, interface_index: i32) -> Result<Vec<Bss>, NlError> {

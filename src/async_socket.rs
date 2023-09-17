@@ -14,7 +14,7 @@ use neli::err::NlError;
 use neli::genl::{Genlmsghdr, Nlattr};
 use neli::nl::{NlPayload, Nlmsghdr};
 use neli::socket::tokio::NlSocket;
-use neli::types::GenlBuffer;
+use neli::types::{Buffer, GenlBuffer};
 
 /// A generic netlink socket to send commands and receive messages
 #[cfg_attr(docsrs, doc(cfg(feature = "async")))]
@@ -90,6 +90,28 @@ impl AsyncSocket {
                 };
             }
         }
+    }
+
+    pub async fn cmd_no_response(
+        &mut self,
+        cmd: Nl80211Cmd,
+        attrs: GenlBuffer<Nl80211Attr, Buffer>,
+    ) -> Result<(), NlError> {
+        let msghdr = Genlmsghdr::<Nl80211Cmd, Nl80211Attr>::new(cmd, NL_80211_GENL_VERSION, attrs);
+
+        let nlhdr = {
+            let len = None;
+            let nl_type = self.family_id;
+            let flags = NlmFFlags::new(&[NlmF::Request]);
+            let seq = None;
+            let pid = None;
+            let payload = NlPayload::Payload(msghdr);
+            Nlmsghdr::new(len, nl_type, flags, seq, pid, payload)
+        };
+
+        self.sock.send(&nlhdr).await?;
+
+        Ok(())
     }
 
     async fn get_info_vec<T>(
